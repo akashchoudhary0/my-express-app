@@ -2,56 +2,73 @@ const mongoose = require("mongoose");
 
 const businessProfileSchema = new mongoose.Schema(
   {
+    ownerName: {
+      type: String,
+      required: true,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+    },
+
+    password: {
+      type: String,
+      required: true,
+      minlength: 6,
+      select: false,
+    },
+
     businessName: {
       type: String,
       required: true,
     },
-    ownerName: {
-      type: String,
-      
-    },
+
     businessLogo: {
       type: String,
-      
+      default: "",
     },
-    address: {
+
+    gst: {
+      type: String,
+    },
+
+    phoneNumber: {
       type: String,
       required: true,
     },
-    gst: {
-      type: String, // optional
-    },
-    phoneNumber: {
-      type: Number,
-      
-    },
+
     shopCategory: {
       type: String,
-      
+      required: true,
     },
+
     invoiceLimit: {
       type: Number,
-      required: true,
       default: 10,
     },
+
     totalInvoice: {
       type: Number,
-      required: true,
       default: 0,
     },
-    isApproved: {
-      type: Boolean,
-      default: false,
-    },
-    vendorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Vendor", // reference to Vendor model
-      required: true,
+
+    address: {
+      street: String,
+      city: String,
+      district: String,
+      state: String,
+      pincode: String,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-const BusinessProfile = mongoose.model("BusinessProfile", businessProfileSchema);
-
-module.exports = BusinessProfile;
+module.exports = mongoose.model(
+  "BusinessProfile",
+  businessProfileSchema
+);

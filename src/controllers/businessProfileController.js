@@ -1,78 +1,248 @@
 const BusinessProfile = require("../models/BusinessProfile");
-const Vendor = require("../models/Vendor");
 
-// ✅ Define functions first
 
-const createBusinessProfile = async (req, res) => {
+// ==============================
+// REGISTER
+// ==============================
+const register = async (req, res) => {
   try {
-    const { vendorId, businessName, address, gst, phoneNumber, shopCategory, businessLogo } = req.body;
 
-    const vendor = await Vendor.findById(vendorId);
-    if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+    // Check existing user
+    const existingUser = await BusinessProfile.findOne({
+      email: req.body.email,
+    });
 
-    const profile = await BusinessProfile.create({
-      vendorId,
-      businessName,
-      address,
-      gst,
-      phoneNumber,
-      shopCategory,
-      businessLogo,
-      ownerName: vendor.name,
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered",
+      });
+    }
+
+    // Logo Upload Path
+    let logoPath = "";
+
+    if (req.file) {
+      logoPath = `/uploads/${req.file.filename}`;
+    }
+
+    // Create User
+    const user = await BusinessProfile.create({
+      ownerName: req.body.ownerName,
+      email: req.body.email,
+      password: req.body.password,
+
+      businessName: req.body.businessName,
+      businessLogo: logoPath,
+
+      gst: req.body.gst,
+      phoneNumber: req.body.phoneNumber,
+      shopCategory: req.body.shopCategory,
+
+      address: {
+        street: req.body.street,
+        city: req.body.city,
+        district: req.body.district,
+        state: req.body.state,
+        pincode: req.body.pincode,
+      },
     });
 
     res.status(201).json({
-      message: "Business profile created successfully",
-      profile,
+      success: true,
+      message: "Registration successful",
+      userId: user._id,
     });
+
   } catch (error) {
-    console.error("❌ BusinessProfile error:", error);
-    res.status(500).json({ error: error.message });
+
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
+
+// ==============================
+// LOGIN
+// ==============================
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await BusinessProfile
+      .findOne({ email })
+      .select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.password !== password) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      userId: user._id,
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Login failed",
+    });
+  }
+};
+
+
+// ==============================
+// GET ALL
+// ==============================
 const getBusinessProfiles = async (req, res) => {
   try {
-    const profiles = await BusinessProfile.find().populate("vendorId", "name email");
-    res.json(profiles);
+    const profiles = await BusinessProfile.find();
+
+    res.status(200).json({
+      success: true,
+      count: profiles.length,
+      profiles,
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 
+
+// ==============================
+// GET BY ID
+// ==============================
 const getBusinessProfileById = async (req, res) => {
   try {
-    const profile = await BusinessProfile.findById(req.params.id).populate("vendorId", "name email");
-    if (!profile) return res.status(404).json({ message: "Business Profile not found" });
-    res.json(profile);
+    const profile = await BusinessProfile.findById(req.params.id);
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: "Business Profile not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      profile,
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 
+
+// ==============================
+// UPDATE
+// ==============================
 const updateBusinessProfile = async (req, res) => {
   try {
-    const profile = await BusinessProfile.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!profile) return res.status(404).json({ message: "Business Profile not found" });
-    res.json(profile);
+    const updateData = {};
+
+    // Basic fields
+    if (req.body.ownerName) updateData.ownerName = req.body.ownerName;
+    if (req.body.email) updateData.email = req.body.email;
+    if (req.body.businessName) updateData.businessName = req.body.businessName;
+    if (req.body.phoneNumber) updateData.phoneNumber = req.body.phoneNumber;
+    if (req.body.gst) updateData.gst = req.body.gst;
+    if (req.body.shopCategory) updateData.shopCategory = req.body.shopCategory;
+
+    // Parse address correctly
+    if (req.body.address) {
+      updateData.address = JSON.parse(req.body.address);
+    }
+
+    // Handle logo upload
+    if (req.file) {
+      updateData.businessLogo = `/uploads/${req.file.filename}`;
+    }
+
+    const updatedProfile = await BusinessProfile.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true }
+    );
+
+    if (!updatedProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Business Profile not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      updatedProfile,
+    });
+
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.log(error);
+    res.status(400).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 
+
+// ==============================
+// DELETE
+// ==============================
 const deleteBusinessProfile = async (req, res) => {
   try {
     const profile = await BusinessProfile.findByIdAndDelete(req.params.id);
-    if (!profile) return res.status(404).json({ message: "Business Profile not found" });
-    res.json({ message: "Business Profile deleted successfully" });
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: "Business Profile not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Business Profile deleted successfully",
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 
-// ✅ Export all functions at the bottom
+
 module.exports = {
-  createBusinessProfile,
+  register,
+  login,
   getBusinessProfiles,
   getBusinessProfileById,
   updateBusinessProfile,

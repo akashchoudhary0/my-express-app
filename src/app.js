@@ -2,35 +2,49 @@ const express = require("express");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const cors = require("cors");
+const path = require("path");
 
-// Load env vars
 dotenv.config();
-
-// Connect Database
 connectDB();
 
 const app = express();
 
+// ======================
 // Middlewares
+// ======================
 app.use(express.json());
 
-// CORS (keep only once)
+app.use(express.urlencoded({ extended: true }));
+
 app.use(
   cors({
-    origin: "http://localhost:3000", // Next.js frontend
+    origin: "http://localhost:3000",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );
 
-// Import routes
-const vendorRoutes = require("./routes/vendorRoutes");
+console.log("__dirname =", __dirname);
+console.log("Uploads Path =", path.join(__dirname, "uploads"));
+
+// Static Upload Folder
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "../uploads"))
+);
+
+// ======================
+// Routes
+// ======================
 const businessProfileRoutes = require("./routes/businessProfileRoutes");
 
-// Use routes
-app.use("/api/vendors", vendorRoutes);
-app.use("/api/business-profiles", businessProfileRoutes);
+app.use("/api/auth", businessProfileRoutes);
 
-// Start server
+// ======================
+// Server Start
+// ======================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
